@@ -28,10 +28,12 @@ public sealed class ProductRepository(NpgsqlDataSource dataSource)
         return product.Id;
     }
 
-    public async Task<IEnumerable<Product>> GetAllAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<Product>> GetAllAsync(CancellationToken ct)
     {
         const string sql = "select id, name from products";
         await using var con = await dataSource.OpenConnectionAsync(ct);
-        return await con.QueryAsync<Product>(sql);
+        var products = await con.QueryAsync<Product>(
+            new CommandDefinition(sql, cancellationToken: ct));
+        return products.AsList();
     }
 }
