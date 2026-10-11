@@ -9,6 +9,7 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 
 builder.Services.AddNpgsqlDataSource(connectionString);
 builder.Services.AddScoped<ProductRepository>();
+builder.Services.AddScoped<PriceChangeRepository>();
 builder.Services.AddOpenApi();
 
 DefaultTypeMap.MatchNamesWithUnderscores = true;

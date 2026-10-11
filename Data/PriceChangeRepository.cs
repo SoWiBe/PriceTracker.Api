@@ -6,8 +6,37 @@ using PriceTracker.Api.Models.Enums;
 
 namespace PriceTracker.Api.Data;
 
-public sealed class PriceChangeRepository(NpgsqlDataSource dataSource)
+public sealed class PriceChangeRepository(NpgsqlDataSource dataSource, TimeProvider timeProvider)
 {
+    public async Task<Result<decimal>> GetActualPrice(Guid productId, DateTime? actualDate, CancellationToken ct)
+    {
+        const string sql = "select * from price_changes where product_id = @ProductId";
+        
+        try
+        {
+            await using var con = await dataSource.OpenConnectionAsync(ct);
+            var priceChanges = await con.QueryAsync<PriceChange>(sql, new { ProductId = productId });
+            
+            var bestPrice = 0M;
+            var bestEffectiveFrom = DateTimeOffset.MinValue;
+            actualDate ??= timeProvider.GetUtcNow().DateTime;
+            
+            foreach (var price in priceChanges)
+            {
+                if (price.EffectiveFrom > actualDate || price.EffectiveFrom <= bestEffectiveFrom) continue;
+
+                bestPrice = price.Price;
+                bestEffectiveFrom = price.EffectiveFrom;
+            }
+
+            return Result<decimal>.Success(bestPrice);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return Result<decimal>.Failure(new Error(ErrorType.NotFound, $"Product {productId} not found"));
+        }
+    }
+    
     public async Task<Result<Guid>> ChangePrice(
         Guid productId, decimal price, 
         DateTimeOffset? effectiveFrom, CancellationToken ct)
@@ -21,7 +50,7 @@ public sealed class PriceChangeRepository(NpgsqlDataSource dataSource)
         {
             Price = price,
             ProductId = productId,
-            EffectiveFrom = (effectiveFrom ?? DateTimeOffset.UtcNow).ToUniversalTime()
+            EffectiveFrom = (effectiveFrom ?? timeProvider.GetUtcNow()).ToUniversalTime()
         };
 
         try
