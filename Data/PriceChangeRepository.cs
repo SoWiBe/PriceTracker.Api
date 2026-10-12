@@ -69,4 +69,29 @@ public sealed class PriceChangeRepository(NpgsqlDataSource dataSource, TimeProvi
             return Result<Guid>.Failure(new Error(ErrorType.Conflict,"Price for this date already exists"));
         }
     }
+
+    public async Task<Result<IReadOnlyList<PriceChange>>> GetProductPriceHistory(
+        Guid productId, DateTime? from, DateTime? to, CancellationToken ct)
+    {
+        const string sql = "select * from  price_changes where effective_from >= @From && effective_from <= @To";
+
+        try
+        {
+            await using var con = await dataSource.OpenConnectionAsync(ct);
+            var priceChanges = await con
+                .QueryAsync<PriceChange>(new CommandDefinition(sql, new { From = from, To = to}, cancellationToken: ct));
+
+            return Result<IReadOnlyList<PriceChange>>.Success(priceChanges.AsList());
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
+        {
+            return Result<IReadOnlyList<PriceChange>>
+                .Failure(new Error(ErrorType.NotFound, $"Product {productId} not found"));
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return Result<IReadOnlyList<PriceChange>>
+                .Failure(new Error(ErrorType.Conflict,"Price for this date already exists"));
+        }
+    }
 }

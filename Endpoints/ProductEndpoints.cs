@@ -1,4 +1,5 @@
 using PriceTracker.Api.Data;
+using PriceTracker.Api.Models;
 using PriceTracker.Api.Models.Request;
 
 namespace PriceTracker.Api.Endpoints;
@@ -36,5 +37,9 @@ public static class ProductEndpoints
         group.MapGet("/{id:guid}/prices",
             async (GetActualPriceRequest request, PriceChangeRepository repo, CancellationToken ct) =>
                 await repo.GetActualPrice(request.ProductId, request.CurrentDate, ct));
+
+        group.MapGet("/{id:guid}/prices",
+            async (Guid productId, GetProductPriceChangeHistory request, PriceChangeRepository repo, CancellationToken ct) =>
+                Results.Ok(await repo.GetProductPriceHistory(productId, request.From, request.To, ct)));
     }
 }
