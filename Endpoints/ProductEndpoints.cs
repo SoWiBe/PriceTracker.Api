@@ -1,4 +1,5 @@
 using PriceTracker.Api.Data;
+using PriceTracker.Api.Models;
 using PriceTracker.Api.Models.Request;
 
 namespace PriceTracker.Api.Endpoints;
@@ -10,14 +11,14 @@ public static class ProductEndpoints
         var group = app.MapGroup("/products");
         
         // получение продукта
-        group.MapGet("/{id:guid}", async (Guid id, ProductRepository repo, CancellationToken ct) 
-            => await repo.GetByIdAsync(id, ct) is { } product 
+        group.MapGet("/{id:guid}", async (Guid id, ProductRepository repo, CancellationToken ct) => 
+            await repo.GetByIdAsync(id, ct) is { } product 
                 ? Results.Ok((object?)product)
                 : Results.NotFound());
         
         // получение всех продуктов
-        group.MapGet("", async (ProductRepository repo, CancellationToken ct)
-            => Results.Ok(await repo.GetAllAsync(ct)));
+        group.MapGet("", async (ProductRepository repo, CancellationToken ct) => 
+            Results.Ok(await repo.GetAllAsync(ct)));
 
         // создание продукта
         group.MapPost("", async (CreateProductRequest request, ProductRepository repo, CancellationToken ct) =>
@@ -29,11 +30,16 @@ public static class ProductEndpoints
             return Results.Created($"/products/{id}", new { id });
         });
 
-        group.MapPost("/{id:guid}",
-            async (PriceChangeRequest request, PriceChangeRepository repo, CancellationToken ct) =>
-            {
-                var result = await repo.ChangePrice(request.ProductId, request.Price, request.EffectiveFrom, ct);
+        group.MapPost("/{id:guid}/prices",
+            async (PriceChangeRequest request, PriceChangeRepository repo, CancellationToken ct) => 
+                await repo.ChangePrice(request.ProductId, request.Price, request.EffectiveFrom, ct));
 
-            });
+        group.MapGet("/{id:guid}/prices",
+            async (GetActualPriceRequest request, PriceChangeRepository repo, CancellationToken ct) =>
+                await repo.GetActualPrice(request.ProductId, request.CurrentDate, ct));
+
+        group.MapGet("/{id:guid}/prices",
+            async (Guid productId, GetProductPriceChangeHistory request, PriceChangeRepository repo, CancellationToken ct) =>
+                Results.Ok(await repo.GetProductPriceHistory(productId, request.From, request.To, ct)));
     }
 }
