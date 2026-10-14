@@ -32,14 +32,19 @@ public static class ProductEndpoints
 
         group.MapPost("/{id:guid}/prices",
             async (PriceChangeRequest request, PriceChangeRepository repo, CancellationToken ct) => 
-                await repo.ChangePrice(request.ProductId, request.Price, request.EffectiveFrom, ct));
+                await repo.ChangePriceAsync(request.ProductId, request.Price, request.EffectiveFrom, ct));
 
-        group.MapGet("/{id:guid}/prices",
-            async (GetActualPriceRequest request, PriceChangeRepository repo, CancellationToken ct) =>
-                await repo.GetActualPrice(request.ProductId, request.CurrentDate, ct));
+        group.MapGet("/{id:guid}/prices/actual/",
+            async ([AsParameters] GetActualPriceRequest request, PriceChangeRepository repo, CancellationToken ct) =>
+            {
+                var actualPriceResult = await repo.GetActualPriceAsync(request.ProductId, request.CurrentDate, ct);
+                return actualPriceResult.IsSuccess 
+                    ? Results.Ok(actualPriceResult.Value)
+                    : Results.NotFound(actualPriceResult.ErrorInfo);
+            });
 
-        group.MapGet("/{id:guid}/prices",
-            async (Guid productId, GetProductPriceChangeHistory request, PriceChangeRepository repo, CancellationToken ct) =>
-                Results.Ok(await repo.GetProductPriceHistory(productId, request.From, request.To, ct)));
+        // group.MapGet("/{id:guid}/prices",
+        //     async (GetProductPriceChangeHistory request, PriceChangeRepository repo, CancellationToken ct) =>
+        //         Results.Ok(await repo.GetProductPriceHistory(productId, request.From, request.To, ct)));
     }
 }
