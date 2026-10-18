@@ -1,5 +1,4 @@
 using PriceTracker.Api.Data;
-using PriceTracker.Api.Models;
 using PriceTracker.Api.Models.Request;
 
 namespace PriceTracker.Api.Endpoints;
@@ -43,8 +42,8 @@ public static class ProductEndpoints
                     : Results.NotFound(actualPriceResult.ErrorInfo);
             });
 
-        // group.MapGet("/{id:guid}/prices",
-        //     async (GetProductPriceChangeHistory request, PriceChangeRepository repo, CancellationToken ct) =>
-        //         Results.Ok(await repo.GetProductPriceHistory(productId, request.From, request.To, ct)));
+        group.MapGet("/{id:guid}/prices",
+            async ([AsParameters] GetProductPriceChangeHistory request, PriceChangeRepository repo, CancellationToken ct) => 
+                Results.Ok((object?)await repo.GetProductPriceHistoryAsync(request.Id, request.From, request.To, ct)));
     }
 }
